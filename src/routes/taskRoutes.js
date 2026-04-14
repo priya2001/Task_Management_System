@@ -6,15 +6,23 @@ const {
   updateTask,
   deleteTask,
   getTasksByStatus,
+  getTasksByAssignee,
+  getTaskStatistics,
 } = require('../controllers/taskController');
 
 const router = express.Router();
 
-// GET all tasks
-router.get('/', getAllTasks);
+// GET task statistics
+router.get('/stats', getTaskStatistics);
 
 // GET tasks by status
 router.get('/status/:status', getTasksByStatus);
+
+// GET tasks assigned to a user
+router.get('/assigned/:userId', getTasksByAssignee);
+
+// GET all tasks
+router.get('/', getAllTasks);
 
 // GET a single task by ID
 router.get('/:id', getTaskById);

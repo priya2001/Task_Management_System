@@ -12,4 +12,4 @@ build/
 .idea/
 .vscode/
 package-lock.json
-package.json
+package.json 

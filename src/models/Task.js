@@ -36,6 +36,17 @@ const taskSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Task must be assigned to a user'],
+      index: true,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
   },
   {
     timestamps: true,
@@ -45,6 +56,8 @@ const taskSchema = new mongoose.Schema(
 // Index for better query performance
 taskSchema.index({ status: 1, createdAt: -1 });
 taskSchema.index({ category: 1, createdAt: -1 });
+taskSchema.index({ assignedTo: 1, status: 1 });
+taskSchema.index({ createdBy: 1 });
 
 // Virtual for getting days until due
 taskSchema.virtual('daysUntilDue').get(function () {
@@ -52,6 +65,17 @@ taskSchema.virtual('daysUntilDue').get(function () {
   const today = new Date();
   const timeDiff = this.dueDate - today;
   return Math.ceil(timeDiff / (1000 * 3600 * 24));
+});
+
+// Populate user references before returning
+taskSchema.pre(/^find/, function () {
+  this.populate({
+    path: 'assignedTo',
+    select: 'email role',
+  }).populate({
+    path: 'createdBy',
+    select: 'email',
+  });
 });
 
 // Ensure virtuals are included in JSON output
