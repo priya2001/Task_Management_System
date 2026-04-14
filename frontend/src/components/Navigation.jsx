@@ -34,7 +34,7 @@ function Navigation() {
             </Link>
             {user && (
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">{user.email}</span>
+                <span className="text-sm text-gray-600">{user.email?.split('@')[0]}</span>
                 <button
                   onClick={handleLogout}
                   className="btn-primary"

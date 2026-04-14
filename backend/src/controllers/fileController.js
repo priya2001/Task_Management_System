@@ -16,8 +16,11 @@ const uploadFiles = async (req, res, next) => {
     const { taskId } = req.params;
     const description = req.body.description || '';
 
+    console.log('📤 File Upload Started:', { taskId, filesCount: req.files?.length });
+
     // Validate task ID format
     if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      console.log('❌ Invalid task ID format:', taskId);
       return res.status(400).json({
         success: false,
         message: 'Invalid task ID format',
@@ -26,6 +29,7 @@ const uploadFiles = async (req, res, next) => {
 
     // Check if files were uploaded
     if (!req.files || req.files.length === 0) {
+      console.log('❌ No files uploaded');
       return res.status(400).json({
         success: false,
         message: 'No files uploaded',
@@ -35,6 +39,7 @@ const uploadFiles = async (req, res, next) => {
     // Find the task
     const task = await Task.findById(taskId);
     if (!task) {
+      console.log('❌ Task not found:', taskId);
       // Clean up uploaded files
       req.files.forEach(file => {
         fs.unlinkSync(file.path);
@@ -45,8 +50,11 @@ const uploadFiles = async (req, res, next) => {
       });
     }
 
+    console.log('✓ Task found:', task._id);
+
     // Check authorization
-    if (!canAccessTask(task, req.user.id, req.user.role)) {
+    if (!canAccessTask(task, req.user._id.toString(), req.user.role)) {
+      console.log('❌ Not authorized to upload');
       // Clean up uploaded files
       req.files.forEach(file => {
         fs.unlinkSync(file.path);
@@ -57,9 +65,12 @@ const uploadFiles = async (req, res, next) => {
       });
     }
 
+    console.log('✓ Authorization passed');
+
     // Check existing file count for this task
     const existingFiles = await File.countDocuments({ task: taskId });
     if (existingFiles + req.files.length > 3) {
+      console.log('❌ File limit exceeded');
       // Clean up uploaded files
       req.files.forEach(file => {
         fs.unlinkSync(file.path);
@@ -73,6 +84,7 @@ const uploadFiles = async (req, res, next) => {
     // Create file documents in database
     const uploadedFiles = [];
     for (const file of req.files) {
+      console.log('💾 Saving file to DB:', file.filename);
       const fileDoc = new File({
         filename: file.filename,
         originalName: file.originalname,
@@ -80,15 +92,17 @@ const uploadFiles = async (req, res, next) => {
         mimetype: file.mimetype,
         size: file.size,
         task: taskId,
-        uploadedBy: req.user.id,
+        uploadedBy: req.user._id,
         description: description || `${file.originalname}`,
       });
 
       const savedFile = await fileDoc.save();
+      console.log('✓ File saved with ID:', savedFile._id);
       await savedFile.populate('uploadedBy', 'email');
       uploadedFiles.push(savedFile);
     }
 
+    console.log('✓ All files uploaded successfully:', uploadedFiles.length);
     res.status(201).json({
       success: true,
       message: `${uploadedFiles.length} file(s) uploaded successfully`,
@@ -96,6 +110,7 @@ const uploadFiles = async (req, res, next) => {
       data: uploadedFiles,
     });
   } catch (error) {
+    console.error('❌ File upload error:', error.message);
     // Clean up uploaded files on error
     if (req.files) {
       req.files.forEach(file => {
@@ -131,7 +146,7 @@ const getTaskFiles = async (req, res, next) => {
     }
 
     // Check authorization
-    if (!canAccessTask(task, req.user.id, req.user.role)) {
+    if (!canAccessTask(task, req.user._id.toString(), req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to view files for this task',
@@ -185,7 +200,7 @@ const downloadFile = async (req, res, next) => {
     }
 
     // Check authorization
-    if (!canAccessTask(task, req.user.id, req.user.role)) {
+    if (!canAccessTask(task, req.user._id.toString(), req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to download this file',
@@ -249,7 +264,7 @@ const getFileMetadata = async (req, res, next) => {
     }
 
     // Check authorization
-    if (!canAccessTask(task, req.user.id, req.user.role)) {
+    if (!canAccessTask(task, req.user._id.toString(), req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to view file metadata',
@@ -306,8 +321,8 @@ const deleteFile = async (req, res, next) => {
     }
 
     // Check authorization - users can delete their own files, admins can delete any
-    const isOwner = file.uploadedBy._id.toString() === req.user.id;
-    const isAdminOrTaskAssigned = req.user.role === 'admin' || canAccessTask(task, req.user.id, req.user.role);
+    const isOwner = file.uploadedBy._id.toString() === req.user._id.toString();
+    const isAdminOrTaskAssigned = req.user.role === 'admin' || canAccessTask(task, req.user._id.toString(), req.user.role);
 
     if (!isOwner && !isAdminOrTaskAssigned) {
       return res.status(403).json({

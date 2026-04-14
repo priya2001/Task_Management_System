@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import DocumentViewer from './DocumentViewer'
 
 /**
  * TaskCard Component
@@ -158,6 +159,12 @@ export const TaskCard = ({ task, onEdit, onDelete, onStatusChange, loading = fal
           {task.description}
         </p>
       )}
+
+      {/* Documents Section */}
+      <div className="mb-3 pb-3 border-b border-gray-200">
+        <p className="text-xs font-semibold text-gray-700 mb-2">Documents</p>
+        <DocumentViewer taskId={task._id} isOwner={true} />
+      </div>
 
       {/* Metadata */}
       <div className="flex flex-wrap gap-2 items-center mb-3">

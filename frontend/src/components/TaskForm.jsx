@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import fileService from '../services/fileService'
 
 /**
  * TaskForm Component
- * Modal form for creating and editing tasks
+ * Modal form for creating and editing tasks with file upload
  */
 export const TaskForm = ({ initialTask = null, onSubmit, onCancel, loading = false }) => {
   const [formData, setFormData] = useState(
@@ -15,6 +16,9 @@ export const TaskForm = ({ initialTask = null, onSubmit, onCancel, loading = fal
     }
   )
   const [errors, setErrors] = useState({})
+  const [selectedFiles, setSelectedFiles] = useState([])
+  const [fileErrors, setFileErrors] = useState([])
+  const fileInputRef = useRef(null)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -45,6 +49,58 @@ export const TaskForm = ({ initialTask = null, onSubmit, onCancel, loading = fal
     return newErrors
   }
 
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files || [])
+    handleFilesSelected(files)
+  }
+
+  const handleFilesSelected = (files) => {
+    const newErrors = []
+    const validFiles = []
+
+    files.forEach((file) => {
+      const validation = fileService.validateFile(file)
+      if (!validation.valid) {
+        newErrors.push(`${file.name}: ${validation.error}`)
+      } else {
+        validFiles.push(file)
+      }
+    })
+
+    // Check total file count
+    if (selectedFiles.length + validFiles.length > 3) {
+      newErrors.push(`Maximum 3 files allowed (current: ${selectedFiles.length})`)
+    } else {
+      setSelectedFiles((prev) => [...prev, ...validFiles])
+    }
+
+    setFileErrors(newErrors)
+  }
+
+  const handleRemoveFile = (index) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.classList.add('border-blue-500', 'bg-blue-50')
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50')
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.classList.remove('border-blue-500', 'bg-blue-50')
+    const files = Array.from(e.dataTransfer.files || [])
+    handleFilesSelected(files)
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     const newErrors = validateForm()
@@ -52,7 +108,8 @@ export const TaskForm = ({ initialTask = null, onSubmit, onCancel, loading = fal
       setErrors(newErrors)
       return
     }
-    onSubmit(formData)
+    // Pass form data and files to parent component
+    onSubmit(formData, selectedFiles)
   }
 
   return (
@@ -163,6 +220,74 @@ export const TaskForm = ({ initialTask = null, onSubmit, onCancel, loading = fal
               className="input-field"
             />
           </div>
+
+          {/* File Upload Section */}
+          {!initialTask && (
+            <div className="space-y-2 pt-2 border-t border-gray-200">
+              <label className="form-label">📄 Attach Documents (Optional)</label>
+              <p className="text-xs text-gray-500">
+                PDF files only • Max 3 files • 10MB each
+              </p>
+
+              {/* Drag and Drop Area */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition"
+              >
+                <p className="text-gray-600 text-sm">
+                  📤 Drag & drop PDFs here or click to browse
+                </p>
+              </div>
+
+              {/* Hidden File Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,application/pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {/* File Errors */}
+              {fileErrors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-2">
+                  {fileErrors.map((error, idx) => (
+                    <p key={idx} className="text-red-600 text-xs">
+                      ⚠️ {error}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* Selected Files List */}
+              {selectedFiles.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 space-y-1">
+                  <p className="text-sm font-medium text-blue-900">
+                    ✓ {selectedFiles.length} file(s) selected
+                  </p>
+                  {selectedFiles.map((file, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between text-xs text-gray-700 bg-white rounded p-1 px-2"
+                    >
+                      <span>📄 {file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(idx)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex gap-3 pt-4">

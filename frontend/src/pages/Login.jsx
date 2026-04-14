@@ -147,13 +147,6 @@ function Login() {
           >
             Create Account
           </Link>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-700 font-semibold mb-2">Demo Credentials:</p>
-            <p className="text-sm text-blue-600">Email: demo@example.com</p>
-            <p className="text-sm text-blue-600">Password: password123</p>
-          </div>
         </div>
 
         {/* Footer */}

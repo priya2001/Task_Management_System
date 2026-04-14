@@ -91,10 +91,10 @@ export const TaskList = ({
   }, [tasks, filters])
 
   // Handlers
-  const handleCreateTask = async (formData) => {
+  const handleCreateTask = async (formData, files = []) => {
     setFormLoading(true)
     try {
-      await onCreateTask(formData)
+      await onCreateTask(formData, files)
       setShowForm(false)
       onErrorClear()
     } finally {

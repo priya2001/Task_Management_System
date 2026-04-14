@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import TaskList from '../components/TaskList'
 import taskService from '../services/taskService'
+import fileService from '../services/fileService'
 
 function Dashboard() {
   const { user } = useAuth()
@@ -31,7 +32,7 @@ function Dashboard() {
     }
   }
 
-  const handleCreateTask = async (taskData) => {
+  const handleCreateTask = async (taskData, files = []) => {
     try {
       setError('')
       console.log('Creating task with data:', taskData, 'User ID:', user?.id || user?._id) // Debug log
@@ -44,6 +45,18 @@ function Dashboard() {
         const newTask = response.data
         console.log('Adding task to state:', newTask) // Debug log
         setTasks([...tasks, newTask])
+
+        // Upload files if provided
+        if (files && files.length > 0) {
+          try {
+            console.log('Uploading files to task:', newTask._id)
+            await fileService.uploadFiles(newTask._id, files)
+            console.log('Files uploaded successfully')
+          } catch (uploadError) {
+            console.error('File upload error:', uploadError)
+            setError('Task created but file upload failed. Please try uploading files again.')
+          }
+        }
       } else {
         setError(response.message || 'Failed to create task')
       }
@@ -124,7 +137,7 @@ function Dashboard() {
         {/* User Info */}
         <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-blue-900">
-            Logged in as <span className="font-semibold">{user?.email}</span>
+            Logged in as <span className="font-semibold">{user?.email?.split('@')[0]}</span>
           </p>
         </div>
 

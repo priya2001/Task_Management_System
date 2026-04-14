@@ -7,8 +7,12 @@ const {
   deleteFile,
 } = require('../controllers/fileController');
 const upload = require('../middleware/multerConfig');
+const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+// All file routes require authentication
+router.use(protect);
 
 // Upload files to a task - max 3 files per request
 router.post('/:taskId/upload', upload.array('files', 3), uploadFiles);
