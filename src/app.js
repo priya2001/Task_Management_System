@@ -4,6 +4,7 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const taskRoutes = require('./routes/taskRoutes');
+const fileRoutes = require('./routes/fileRoutes');
 const { protect } = require('./middleware/authMiddleware');
 
 const app = express();
@@ -30,6 +31,9 @@ app.use('/api/users', userRoutes);
 
 // Protected Routes
 app.use('/api/tasks', protect, taskRoutes);
+
+// File Upload Routes (protected)
+app.use('/api/files', protect, fileRoutes);
 
 // 404 handler
 app.use((req, res) => {

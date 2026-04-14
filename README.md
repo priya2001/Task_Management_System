@@ -18,6 +18,12 @@ A complete Node.js backend using Express.js and MongoDB with a clean MVC archite
 - ✅ CORS support
 - ✅ Environment variables with dotenv
 - ✅ Complete Task API endpoints
+- ✅ **File Upload System** (Multer)
+  - PDF-only uploads with validation
+  - Max 3 files per task
+  - File metadata tracking in MongoDB
+  - Upload, download, and delete APIs
+  - Role-based file access control
 
 ## Folder Structure
 
@@ -29,25 +35,32 @@ Task_Management_System/
 │   ├── controllers/
 │   │   ├── authController.js        # Auth business logic
 │   │   ├── userController.js        # User CRUD business logic
-│   │   └── taskController.js        # Task business logic
+│   │   ├── taskController.js        # Task business logic
+│   │   └── fileController.js        # File upload business logic
 │   ├── middleware/
 │   │   ├── authMiddleware.js        # JWT authentication & authorization
 │   │   ├── corsMiddleware.js        # CORS configuration
-│   │   └── errorHandler.js          # Global error handling
+│   │   ├── errorHandler.js          # Global error handling
+│   │   └── multerConfig.js          # Multer file upload configuration
 │   ├── models/
 │   │   ├── User.js                  # User data model
-│   │   └── Task.js                  # Task data model
+│   │   ├── Task.js                  # Task data model
+│   │   └── File.js                  # File metadata model
 │   ├── routes/
 │   │   ├── authRoutes.js            # Auth API routes
 │   │   ├── userRoutes.js            # User management routes
-│   │   └── taskRoutes.js            # Task API routes
+│   │   ├── taskRoutes.js            # Task API routes
+│   │   └── fileRoutes.js            # File upload API routes
 │   └── app.js                       # Express app configuration
+├── uploads/                         # Local file storage (git ignored)
 ├── server.js                        # Server entry point
 ├── package.json                     # Dependencies
 ├── .env.example                     # Environment variables template
 ├── .env                             # Environment variables (local, not in git)
 ├── AUTHENTICATION.md                # Auth API documentation
 ├── USER_MANAGEMENT.md               # User management documentation
+├── TASK_MANAGEMENT.md               # Task API documentation
+├── FILE_UPLOAD.md                   # File upload API documentation
 ├── .gitignore                       # Git ignore rules
 └── README.md                        # This file
 ```
@@ -117,6 +130,13 @@ Task_Management_System/
 - `POST /api/tasks` - Create a new task
 - `PUT /api/tasks/:id` - Update a task
 - `DELETE /api/tasks/:id` - Delete a task
+
+### File Upload (Protected - Requires JWT Token)
+- `POST /api/files/:taskId/upload` - Upload files (1-3 PDFs per request)
+- `GET /api/files/:taskId` - Get all files for a task
+- `GET /api/files/file/:fileId` - Get file metadata
+- `GET /api/files/file/:fileId/download` - Download a file
+- `DELETE /api/files/file/:fileId` - Delete a file
 
 ### Health Check
 - `GET /api/health` - Server health status
