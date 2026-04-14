@@ -30,7 +30,7 @@ npm run dev
 http://localhost:3000
 ```
 
-**That's it!** Register → Login → Create Tasks 🎉
+**That's it!** Register → Login → Create Tasks 
 
 ---
 
@@ -64,41 +64,6 @@ http://localhost:3000
 - Task statistics
 - Beautiful responsive UI
 - Complete documentation
-
-## Features Overview
-
-### Authentication
-```
-✅ Register with name, email, password
-✅ Login with email & password
-✅ Secure JWT token storage
-✅ Protected routes
-✅ Logout functionality
-```
-
-### Task Management
-```
-✅ Create new tasks
-✅ View all tasks in grid
-✅ Add title & description
-✅ Set priority (High/Medium/Low)
-✅ Add status (To Do/In Progress/Completed)
-✅ Delete tasks
-✅ View task statistics
-```
-
-### Beautiful UI
-```
-✅ TailwindCSS styling
-✅ Custom color theme
-✅ Responsive design
-✅ Mobile-friendly
-✅ Smooth animations
-✅ Error messages
-✅ Loading states
-```
-
----
 
 ## Technology Stack
 
@@ -139,9 +104,9 @@ http://localhost:3000
 
 ### Prerequisites
 ```bash
-✅ Node.js 18+ (npm 9+)
-✅ MongoDB 6.0+ (Local or Atlas)
-✅ Git
+Node.js 18+ (npm 9+)
+MongoDB 6.0+ (Local or Atlas)
+Git
 ```
 
 ### Installation
@@ -179,12 +144,12 @@ Backend:   http://localhost:5000
 
 | Document | Purpose |
 |----------|---------|
-| **DOCUMENTATION_INDEX.md** | 📑 Navigation guide for all docs |
-| **PROJECT_OVERVIEW.md** | 📋 Full architecture & setup |
-| **frontend/README.md** | 📖 Complete frontend docs |
-| **frontend/FRONTEND_SETUP_GUIDE.md** | 🚀 Step-by-step setup |
-| **frontend/FRONTEND_PROJECT_STRUCTURE.md** | 📁 Detailed structure reference |
-| **backend/README.md** | 📖 Complete backend docs |
+| **DOCUMENTATION_INDEX.md** | Navigation guide for all docs |
+| **PROJECT_OVERVIEW.md** | Full architecture & setup |
+| **frontend/README.md** | Complete frontend docs |
+| **frontend/FRONTEND_SETUP_GUIDE.md** | Step-by-step setup |
+| **frontend/FRONTEND_PROJECT_STRUCTURE.md** | Detailed structure reference |
+| **backend/README.md** | Complete backend docs |
 ---
 
 ## Usage
@@ -230,7 +195,7 @@ Redirected to login page
 
 ---
 
-## 🔍 API Endpoints
+## API Endpoints
 
 ### Authentication
 ```
