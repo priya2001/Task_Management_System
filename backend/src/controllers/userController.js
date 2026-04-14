@@ -9,12 +9,15 @@ const isValidObjectId = (id) => {
 // Get all users (Admin only)
 const getAllUsers = async (req, res, next) => {
   try {
-    const { role, isActive, search } = req.query;
+    const { role, isActive, search, sortBy, page = 1, limit = 10 } = req.query;
     const filter = {};
 
     // Filter by role
     if (role) {
-      filter.role = role;
+      const validRoles = ['admin', 'user'];
+      if (validRoles.includes(role)) {
+        filter.role = role;
+      }
     }
 
     // Filter by active status
@@ -27,13 +30,55 @@ const getAllUsers = async (req, res, next) => {
       filter.email = { $regex: search, $options: 'i' };
     }
 
-    const users = await User.find(filter)
-      .select('-password')
-      .sort({ createdAt: -1 });
+    // Determine sort order
+    let sortOrder = { createdAt: -1 }; // Default: newest first
+    if (sortBy) {
+      switch (sortBy) {
+        case 'email-asc':
+          sortOrder = { email: 1 };
+          break;
+        case 'email-desc':
+          sortOrder = { email: -1 };
+          break;
+        case 'lastLogin':
+          sortOrder = { lastLogin: -1, createdAt: -1 };
+          break;
+        case 'updated':
+          sortOrder = { updatedAt: -1 };
+          break;
+        default:
+          sortOrder = { createdAt: -1 };
+      }
+    }
+
+    // Validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit))); // Max 100 per page
+    const skip = (pageNum - 1) * limitNum;
+
+    // Execute count and find queries in parallel
+    const [totalCount, users] = await Promise.all([
+      User.countDocuments(filter),
+      User.find(filter)
+        .select('-password')
+        .sort(sortOrder)
+        .skip(skip)
+        .limit(limitNum)
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limitNum);
 
     res.status(200).json({
       success: true,
       count: users.length,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        totalCount,
+        totalPages,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
+      },
       data: users,
     });
   } catch (error) {

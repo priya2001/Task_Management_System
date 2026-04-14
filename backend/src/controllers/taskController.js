@@ -16,14 +16,14 @@ const canAccessTask = (task, userId, userRole) => {
 // Get all tasks (filtered by user or all for admin)
 const getAllTasks = async (req, res, next) => {
   try {
-    const { status, priority, assignedTo, search } = req.query;
+    const { status, priority, assignedTo, search, sortBy, page = 1, limit = 10 } = req.query;
     const filter = {};
 
     // Non-admins can only see their own tasks
     if (req.user.role !== 'admin') {
       filter.$or = [
-        { assignedTo: req.user.id },
-        { createdBy: req.user.id }
+        { assignedTo: req.user._id },
+        { createdBy: req.user._id }
       ];
     } else if (assignedTo) {
       // Admins can filter by assignedTo
@@ -34,12 +34,18 @@ const getAllTasks = async (req, res, next) => {
 
     // Filter by status
     if (status) {
-      filter.status = status;
+      const validStatuses = ['pending', 'in-progress', 'completed'];
+      if (validStatuses.includes(status)) {
+        filter.status = status;
+      }
     }
 
     // Filter by priority
     if (priority) {
-      filter.priority = priority;
+      const validPriorities = ['low', 'medium', 'high'];
+      if (validPriorities.includes(priority)) {
+        filter.priority = priority;
+      }
     }
 
     // Search by title or description
@@ -50,12 +56,62 @@ const getAllTasks = async (req, res, next) => {
       ];
     }
 
-    const tasks = await Task.find(filter)
-      .sort({ createdAt: -1 });
+    // Determine sort order
+    let sortOrder = { createdAt: -1 }; // Default: newest first
+    if (sortBy) {
+      switch (sortBy) {
+        case 'dueDate-asc':
+          sortOrder = { dueDate: 1, createdAt: -1 };
+          break;
+        case 'dueDate-desc':
+          sortOrder = { dueDate: -1, createdAt: -1 };
+          break;
+        case 'priority-asc':
+          const priorityOrder = { low: 1, medium: 2, high: 3 };
+          // Note: Direct priority sort requires DB collation or application-level sorting
+          sortOrder = { priority: 1, createdAt: -1 };
+          break;
+        case 'priority-desc':
+          sortOrder = { priority: -1, createdAt: -1 };
+          break;
+        case 'status-asc':
+          sortOrder = { status: 1, createdAt: -1 };
+          break;
+        case 'updated':
+          sortOrder = { updatedAt: -1 };
+          break;
+        default:
+          sortOrder = { createdAt: -1 };
+      }
+    }
+
+    // Validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit))); // Max 100 per page
+    const skip = (pageNum - 1) * limitNum;
+
+    // Execute count and find queries in parallel
+    const [totalCount, tasks] = await Promise.all([
+      Task.countDocuments(filter),
+      Task.find(filter)
+        .sort(sortOrder)
+        .skip(skip)
+        .limit(limitNum)
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limitNum);
 
     res.status(200).json({
       success: true,
       count: tasks.length,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        totalCount,
+        totalPages,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
+      },
       data: tasks,
     });
   } catch (error) {
@@ -86,7 +142,7 @@ const getTaskById = async (req, res, next) => {
     }
 
     // Check authorization
-    if (!canAccessTask(task, req.user.id, req.user.role)) {
+    if (!canAccessTask(task, req.user._id.toString(), req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this task',
@@ -105,7 +161,7 @@ const getTaskById = async (req, res, next) => {
 // Create a new task
 const createTask = async (req, res, next) => {
   try {
-    const { title, description, priority, dueDate, category, assignedTo } = req.body;
+    const { title, description, priority, status, dueDate, category, assignedTo } = req.body;
 
     // Validate required fields
     if (!title || title.trim() === '') {
@@ -140,7 +196,7 @@ const createTask = async (req, res, next) => {
     }
 
     // Non-admins can only assign to themselves
-    if (req.user.role !== 'admin' && assignedTo !== req.user.id) {
+    if (req.user.role !== 'admin' && assignedTo !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Users can only create tasks for themselves',
@@ -151,10 +207,11 @@ const createTask = async (req, res, next) => {
       title,
       description,
       priority,
+      status,
       dueDate,
       category,
       assignedTo,
-      createdBy: req.user.id,
+      createdBy: req.user._id,
     });
 
     const savedTask = await task.save();
@@ -198,7 +255,7 @@ const updateTask = async (req, res, next) => {
     }
 
     // Check authorization
-    if (!canAccessTask(task, req.user.id, req.user.role)) {
+    if (!canAccessTask(task, req.user._id.toString(), req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this task',
@@ -271,7 +328,7 @@ const deleteTask = async (req, res, next) => {
     }
 
     // Check authorization
-    if (!canAccessTask(task, req.user.id, req.user.role)) {
+    if (!canAccessTask(task, req.user._id.toString(), req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this task',
@@ -297,6 +354,7 @@ const deleteTask = async (req, res, next) => {
 const getTasksByStatus = async (req, res, next) => {
   try {
     const { status } = req.params;
+    const { sortBy, page = 1, limit = 10 } = req.query;
     const validStatuses = ['pending', 'in-progress', 'completed'];
 
     if (!validStatuses.includes(status)) {
@@ -311,16 +369,48 @@ const getTasksByStatus = async (req, res, next) => {
     // Non-admins can only see their own tasks
     if (req.user.role !== 'admin') {
       filter.$or = [
-        { assignedTo: req.user.id },
-        { createdBy: req.user.id }
+        { assignedTo: req.user._id },
+        { createdBy: req.user._id }
       ];
     }
 
-    const tasks = await Task.find(filter).sort({ createdAt: -1 });
+    // Determine sort order
+    let sortOrder = { createdAt: -1 };
+    if (sortBy === 'dueDate-asc') {
+      sortOrder = { dueDate: 1, createdAt: -1 };
+    } else if (sortBy === 'dueDate-desc') {
+      sortOrder = { dueDate: -1, createdAt: -1 };
+    } else if (sortBy === 'priority-desc') {
+      sortOrder = { priority: -1, createdAt: -1 };
+    } else if (sortBy === 'updated') {
+      sortOrder = { updatedAt: -1 };
+    }
+
+    // Validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Execute count and find queries in parallel
+    const [totalCount, tasks] = await Promise.all([
+      Task.countDocuments(filter),
+      Task.find(filter).sort(sortOrder).skip(skip).limit(limitNum)
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limitNum);
 
     res.status(200).json({
       success: true,
       count: tasks.length,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        totalCount,
+        totalPages,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
+      },
+      status,
       data: tasks,
     });
   } catch (error) {
@@ -332,6 +422,7 @@ const getTasksByStatus = async (req, res, next) => {
 const getTasksByAssignee = async (req, res, next) => {
   try {
     const { userId } = req.params;
+    const { status, priority, sortBy, page = 1, limit = 10 } = req.query;
 
     // Validate user ID format
     if (!isValidObjectId(userId)) {
@@ -351,18 +442,66 @@ const getTasksByAssignee = async (req, res, next) => {
     }
 
     // Non-admins can only view their own tasks
-    if (req.user.role !== 'admin' && req.user.id !== userId) {
+    if (req.user.role !== 'admin' && req.user._id.toString() !== userId) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to view these tasks',
       });
     }
 
-    const tasks = await Task.find({ assignedTo: userId }).sort({ createdAt: -1 });
+    // Build filter
+    const filter = { assignedTo: userId };
+
+    if (status) {
+      const validStatuses = ['pending', 'in-progress', 'completed'];
+      if (validStatuses.includes(status)) {
+        filter.status = status;
+      }
+    }
+
+    if (priority) {
+      const validPriorities = ['low', 'medium', 'high'];
+      if (validPriorities.includes(priority)) {
+        filter.priority = priority;
+      }
+    }
+
+    // Determine sort order
+    let sortOrder = { createdAt: -1 };
+    if (sortBy === 'dueDate-asc') {
+      sortOrder = { dueDate: 1, createdAt: -1 };
+    } else if (sortBy === 'dueDate-desc') {
+      sortOrder = { dueDate: -1, createdAt: -1 };
+    } else if (sortBy === 'priority-desc') {
+      sortOrder = { priority: -1, createdAt: -1 };
+    } else if (sortBy === 'updated') {
+      sortOrder = { updatedAt: -1 };
+    }
+
+    // Validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Execute count and find queries in parallel
+    const [totalCount, tasks] = await Promise.all([
+      Task.countDocuments(filter),
+      Task.find(filter).sort(sortOrder).skip(skip).limit(limitNum)
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limitNum);
 
     res.status(200).json({
       success: true,
       count: tasks.length,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        totalCount,
+        totalPages,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
+      },
       assignedTo: user.email,
       data: tasks,
     });
@@ -378,8 +517,8 @@ const getTaskStatistics = async (req, res, next) => {
 
     if (req.user.role !== 'admin') {
       filter.$or = [
-        { assignedTo: req.user.id },
-        { createdBy: req.user.id }
+        { assignedTo: req.user._id },
+        { createdBy: req.user._id }
       ];
     }
 
