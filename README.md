@@ -1,6 +1,7 @@
 # Task Management System
 
 A complete full-stack web application for managing tasks with user authentication, featuring a React frontend with TailwindCSS and a Node.js/Express backend with MongoDB.
+
 ---
 
 ## Screenshots
