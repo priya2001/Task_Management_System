@@ -13,8 +13,13 @@ A complete full-stack web application for managing tasks with user authenticatio
 ![Register Page](./screenshots/img2.png)
 *Create new user account with validation*
 
+### Create Task
+![create task](./screenshots/img3.png)
+*Create new task with upload file*
+
+
 ### Dashboard
-![Dashboard](./screenshots/img3.png)
+![Dashboard](./screenshots/img4.png)
 *Task management interface with create, view, and delete operations*
 
 ---

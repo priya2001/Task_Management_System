@@ -151,7 +151,7 @@ function Login() {
 
         {/* Footer */}
         <p className="text-center text-gray-600 text-sm mt-6">
-          © 2024 Task Management System. All rights reserved.
+          © 2026 Task Management System. All rights reserved.
         </p>
       </div>
     </div>
